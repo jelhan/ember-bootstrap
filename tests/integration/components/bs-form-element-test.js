@@ -185,3 +185,70 @@ test('disabled property propagates - select', function(assert) {
   assert.ok(this.$('.form-group').hasClass('is-disabled'), 'component has is-disabled class');
   assert.equal(this.$('select').attr('disabled'), 'disabled', 'input html5 disabled is true');
 });
+
+test('adjusts validation icon position if there is an input group', function(assert) {
+  assert.expect(5);
+  this.set('validation', 'success');
+  this.render(hbs`
+    {{#bs-form-element validation=validation label='ajusts validation icon position' classNames='addon'}}
+      <div class="input-group">
+        {{bs-input}}
+        <div class="input-group-addon">
+          @example.com
+        </div>
+      </div>
+    {{/bs-form-element}}
+    {{#bs-form-element validation=validation label='ajusts validation icon position' classNames='button'}}
+      <div class="input-group">
+        {{bs-input}}
+        <div class="input-group-btn">
+          <button class="btn btn-default" type="button">foo</button>
+          <button class="btn btn-default" type="button">bar</button>
+        </div>
+      </div>
+    {{/bs-form-element}}
+    {{#bs-form formLayout='horizontal'}}
+      {{#bs-form-element validation=validation label='ajusts validation icon position' classNames='horizontal'}}
+        <div class="input-group">
+          {{bs-input}}
+          <div class="input-group-btn">
+            <button class="btn btn-default" type="button">foo</button>
+            <button class="btn btn-default" type="button">bar</button>
+          </div>
+        </div>
+      {{/bs-form-element}}
+    {{/bs-form}}
+  `);
+  // assumption on bootstrap: feedback icons does have right: 0px for vertical forms
+  assert.equal(
+    // jQuery documentation:
+    //  number returned by dimensions-related APIs, including .position(), may be fractional in some cases
+    // parsing as integer seems to fix tests in affected browsers
+    parseInt(this.$('.addon .form-control-feedback').position().left) + this.$('.addon .form-control-feedback').outerWidth(),
+    parseInt(this.$('.addon .input-group-addon').position().left),
+    'works for addon on init'
+  );
+  assert.ok(
+    parseInt(this.$('.button .form-control-feedback').position().left) + this.$('.button .form-control-feedback').outerWidth(),
+    this.$('.button .input-group-btn').position().left,
+    'works for button on init'
+  );
+  let expectedPosition = this.$('.addon .form-control-feedback').position();
+  this.set('validation', null);
+  assert.ok(
+    this.$().has('.form-control-feedback').length === 0,
+    'assumption'
+  );
+  this.set('validation', 'error');
+  assert.equal(
+    parseInt(this.$('.addon .form-control-feedback').position().left),
+    expectedPosition.left,
+    'adjusts correctly after validation change'
+  );
+  // assumption on bootstrap: feedback icons does have right: 15px for horizontal forms
+  assert.equal(
+    parseInt(this.$('.horizontal .form-control-feedback').position().left) + this.$('.button .form-control-feedback').outerWidth() - 15,
+    parseInt(this.$('.horizontal .input-group-btn').position().left),
+    'takes bootstrap default positioning into account'
+  );
+});
