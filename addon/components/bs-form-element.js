@@ -518,7 +518,7 @@ export default FormGroup.extend({
   adjustFeedbackIcons: on('didInsertElement', observer('hasFeedback', 'formLayout', function() {
     run.scheduleOnce('afterRender', () => {
       // validation state icons are only shown if form element has feedback
-      if (this.get('hasFeedback')) {
+      if (this.get('hasFeedback') && !this.get('isDestroying')) {
         // form group element has
         this.$()
           // an input-group
