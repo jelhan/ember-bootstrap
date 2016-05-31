@@ -515,7 +515,7 @@ export default FormGroup.extend({
    *  with an add-on on the right. [...] For input groups, adjust the right
    *  value to an appropriate pixel value depending on the width of your addon.
    */
-  adjustFeedbackIcons: on('init', observer('hasFeedback', 'formLayout', function() {
+  adjustFeedbackIcons: on('didInsertElement', observer('hasFeedback', 'formLayout', function() {
     run.scheduleOnce('afterRender', () => {
       // validation state icons are only shown if form element has feedback
       if (this.get('hasFeedback')) {
