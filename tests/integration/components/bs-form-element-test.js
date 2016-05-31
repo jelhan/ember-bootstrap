@@ -221,19 +221,16 @@ test('adjusts validation icon position if there is an input group', function(ass
   `);
   // assumption on bootstrap: feedback icons does have right: 0px for vertical forms
   assert.equal(
-    // jQuery documentation:
-    //  number returned by dimensions-related APIs, including .position(), may be fractional in some cases
-    // parsing as integer seems to fix tests in affected browsers
-    parseInt(this.$('.addon .form-control-feedback').position().left) + this.$('.addon .form-control-feedback').outerWidth(),
-    parseInt(this.$('.addon .input-group-addon').position().left),
+    this.$('.addon .form-control-feedback').css('right'),
+    `${this.$('.addon .input-group-addon').outerWidth()}px`,
     'works for addon on init'
   );
-  assert.ok(
-    parseInt(this.$('.button .form-control-feedback').position().left) + this.$('.button .form-control-feedback').outerWidth(),
-    this.$('.button .input-group-btn').position().left,
+  assert.equal(
+    this.$('.button .form-control-feedback').css('right'),
+    `${this.$('.button .input-group-btn').outerWidth()}px`,
     'works for button on init'
   );
-  let expectedPosition = this.$('.addon .form-control-feedback').position();
+  let expectedRightValue = this.$('.addon .form-control-feedback').css('right');
   this.set('validation', null);
   assert.ok(
     this.$().has('.form-control-feedback').length === 0,
@@ -241,14 +238,14 @@ test('adjusts validation icon position if there is an input group', function(ass
   );
   this.set('validation', 'error');
   assert.equal(
-    parseInt(this.$('.addon .form-control-feedback').position().left),
-    expectedPosition.left,
+    this.$('.addon .form-control-feedback').css('right'),
+    expectedRightValue,
     'adjusts correctly after validation change'
   );
   // assumption on bootstrap: feedback icons does have right: 15px for horizontal forms
   assert.equal(
-    parseInt(this.$('.horizontal .form-control-feedback').position().left) + this.$('.button .form-control-feedback').outerWidth() - 15,
-    parseInt(this.$('.horizontal .input-group-btn').position().left),
+    this.$('.horizontal .form-control-feedback').css('right'),
+    `${this.$('.horizontal .input-group-btn').outerWidth() + 15}px`,
     'takes bootstrap default positioning into account'
   );
 });
