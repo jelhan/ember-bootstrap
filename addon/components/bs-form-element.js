@@ -515,7 +515,7 @@ export default FormGroup.extend({
    *  with an add-on on the right. [...] For input groups, adjust the right
    *  value to an appropriate pixel value depending on the width of your addon.
    */
-  adjustFeedbackIcons: on('init', observer('hasFeedback', function() {
+  adjustFeedbackIcons: on('init', observer('hasFeedback', 'formLayout', function() {
     run.scheduleOnce('afterRender', () => {
       // validation state icons are only shown if form element has feedback
       if (this.get('hasFeedback')) {
@@ -528,6 +528,8 @@ export default FormGroup.extend({
           // an icon showing validation state
           .has('.form-control-feedback')
           .each((i, formGroups) => {
+            // clear existing adjustment
+            this.$('.form-control-feedback').attr('style', '');
             let feedbackIcon = this.$('.form-control-feedback', formGroups);
             let defaultPositionString = feedbackIcon.css('right');
             Ember.assert(

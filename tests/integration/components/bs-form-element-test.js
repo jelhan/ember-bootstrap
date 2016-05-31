@@ -187,28 +187,20 @@ test('disabled property propagates - select', function(assert) {
 });
 
 test('adjusts validation icon position if there is an input group', function(assert) {
-  assert.expect(5);
+  assert.expect(6);
   this.set('validation', 'success');
+  this.set('formLayout', 'vertical');
   this.render(hbs`
-    {{#bs-form-element validation=validation label='ajusts validation icon position' classNames='addon'}}
-      <div class="input-group">
-        {{bs-input}}
-        <div class="input-group-addon">
-          @example.com
+    {{#bs-form formLayout=formLayout}}
+      {{#bs-form-element validation=validation label='ajusts validation icon position' classNames='addon'}}
+        <div class="input-group">
+          {{bs-input}}
+          <div class="input-group-addon">
+            @example.com
+          </div>
         </div>
-      </div>
-    {{/bs-form-element}}
-    {{#bs-form-element validation=validation label='ajusts validation icon position' classNames='button'}}
-      <div class="input-group">
-        {{bs-input}}
-        <div class="input-group-btn">
-          <button class="btn btn-default" type="button">foo</button>
-          <button class="btn btn-default" type="button">bar</button>
-        </div>
-      </div>
-    {{/bs-form-element}}
-    {{#bs-form formLayout='horizontal'}}
-      {{#bs-form-element validation=validation label='ajusts validation icon position' classNames='horizontal'}}
+      {{/bs-form-element}}
+      {{#bs-form-element validation=validation label='ajusts validation icon position' classNames='button'}}
         <div class="input-group">
           {{bs-input}}
           <div class="input-group-btn">
@@ -219,7 +211,9 @@ test('adjusts validation icon position if there is an input group', function(ass
       {{/bs-form-element}}
     {{/bs-form}}
   `);
-  // assumption on bootstrap: feedback icons does have right: 0px for vertical forms
+  // assumption on bootstrap defaults:
+  // feedback icons does have right: 0px for vertical forms
+  // https://github.com/twbs/bootstrap/blob/v3.3.6/less/forms.less#L400-L403
   assert.equal(
     this.$('.addon .form-control-feedback').css('right'),
     `${this.$('.addon .input-group-addon').outerWidth()}px`,
@@ -240,12 +234,23 @@ test('adjusts validation icon position if there is an input group', function(ass
   assert.equal(
     this.$('.addon .form-control-feedback').css('right'),
     expectedRightValue,
-    'adjusts correctly after validation change'
+    'adjusts correctly after validation changed from null'
   );
-  // assumption on bootstrap: feedback icons does have right: 15px for horizontal forms
+  this.set('validation', 'success');
+  this.$('.addon input').val('foo').trigger('change');
   assert.equal(
-    this.$('.horizontal .form-control-feedback').css('right'),
-    `${this.$('.horizontal .input-group-btn').outerWidth() + 15}px`,
+    this.$('.addon .form-control-feedback').css('right'),
+    expectedRightValue,
+    'adjusts correctly after validation changed form error to success'
+  );
+  // assumption on bootstrap defaults:
+  // feedback icons does have right: 15px for horizontal forms
+  // https://github.com/twbs/bootstrap/blob/v3.3.6/less/forms.less#L589-L591
+  // https://github.com/twbs/bootstrap/blob/v3.3.6/less/variables.less#L326-L327
+  this.set('formLayout', 'horizontal');
+  assert.equal(
+    this.$('.addon .form-control-feedback').css('right'),
+    `${this.$('.addon .input-group-addon').outerWidth() + 15}px`,
     'takes bootstrap default positioning into account'
   );
 });
