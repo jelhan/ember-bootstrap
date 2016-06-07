@@ -185,3 +185,17 @@ test('disabled property propagates - select', function(assert) {
   assert.ok(this.$('.form-group').hasClass('is-disabled'), 'component has is-disabled class');
   assert.equal(this.$('select').attr('disabled'), 'disabled', 'input html5 disabled is true');
 });
+
+test('setting labelSrOnly property adds sr-only class to label', function(assert) {
+  let formLayouts = [
+    'vertical',
+    'horizontal',
+    'inline'
+  ];
+  this.render(hbs`{{bs-form-element label="myLabel"}}`);
+  assert.notOk(this.$('label').hasClass('sr-only'), `sr-only class is not present as defaultText`);
+  formLayouts.forEach((formLayout) => {
+    this.render(hbs`{{#bs-form formLayout=formLayout }}{{bs-form-element label="myLabel" labelSrOnly=true}}{{/bs-form}}`);
+    assert.ok(this.$('label').hasClass('sr-only'), `sr-only class is present for formLayout ${formLayout}`);
+  });
+});
