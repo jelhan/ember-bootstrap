@@ -121,6 +121,15 @@ export default FormGroup.extend(ComponentChild, {
   label: null,
 
   /**
+   * Add 'sr-only' class to label
+   *
+   * @property labelSrOnly
+   * @type boolean
+   * @public
+   */
+  labelSrOnly: false,
+
+  /**
    * The type of the control widget.
    * Supported types:
    *
