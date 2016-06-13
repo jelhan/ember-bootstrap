@@ -539,7 +539,7 @@ export default FormGroup.extend(ComponentChild, {
           .has('.form-control-feedback')
           .each((i, formGroups) => {
             // clear existing adjustment
-            this.$('.form-control-feedback').attr('style', '');
+            this.$('.form-control-feedback').css('right', '');
             let feedbackIcon = this.$('.form-control-feedback', formGroups);
             let defaultPositionString = feedbackIcon.css('right');
             Ember.assert(
@@ -555,7 +555,7 @@ export default FormGroup.extend(ComponentChild, {
             let inputGroupWidth = this.$('input + .input-group-addon, input + .input-group-btn', formGroups).outerWidth();
             let adjustedPosition = defaultPosition + inputGroupWidth;
 
-            feedbackIcon.css('right', `${adjustedPosition}px`);
+            feedbackIcon.css('right', adjustedPosition);
           });
       }
     });
