@@ -1,10 +1,18 @@
-import { run } from '@ember/runloop';
-import { Promise as EmberPromise } from 'rsvp';
+import { later, next, run } from '@ember/runloop';
+import { Promise as EmberPromise, reject, resolve } from 'rsvp';
 import { module } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
-import { render, click } from '@ember/test-helpers';
+import { render, click, settled } from '@ember/test-helpers';
 import { test, defaultButtonClass } from '../../helpers/bootstrap-test';
 import hbs from 'htmlbars-inline-precompile';
+
+const nextRunloop = function() {
+  return new Promise((resolve) => {
+    next(() => {
+      resolve();
+    });
+  });
+};
 
 module('Integration | Component | bs-button', function(hooks) {
   setupRenderingTest(hooks);
@@ -104,52 +112,125 @@ module('Integration | Component | bs-button', function(hooks) {
   });
 
   test('button text is changed according to button state', async function(assert) {
+    this.set('clickAction', () => {
+      return new EmberPromise((resolve) => {
+        later(() => {
+          resolve();
+        }, 10);
+      });
+    });
 
-    await render(hbs`{{bs-button defaultText="text1" loadingText="text2" textState=textState}}`);
-    assert.dom('button').hasText('text1');
+    await render(
+      hbs`{{bs-button
+      defaultText="default text"
+      pendingText="text for pending state"
+      fulfilledText="text for fulfilled state"
+      rejectedText="text for rejected state"
+      onClick=clickAction
+    }}`);
+    assert.dom('button').hasText('default text');
 
-    run(() => this.set('textState', 'loading'));
+    click('button');
+    await nextRunloop();
+    assert.dom('button').hasText('text for pending state');
 
-    assert.dom('button').hasText('text2');
+    await settled();
+    assert.dom('button').hasText('text for fulfilled state');
 
-    run(() => this.set('textState', 'default'));
+    this.set('clickAction', () => {
+      return new EmberPromise((resolve, reject) => {
+        later(() => {
+          reject();
+        }, 10);
+      });
+    });
+    click('button');
+    await nextRunloop();
+    assert.dom('button').hasText('text for pending state');
 
-    assert.dom('button').hasText('text1');
+    await settled();
+    assert.dom('button').hasText('text for rejected state');
   });
 
-  test('setting reset to true resets button state', async function(assert) {
-    await render(hbs`{{bs-button defaultText="text1" loadingText="text2" textState=textState reset=reset}}`);
-    run(() => this.set('textState', 'loading'));
+  test('setting reset to true resets button text', async function(assert) {
+    this.set('clickAction', () => {
+      return resolve();
+    });
 
-    assert.dom('button').hasText('text2');
+    await render(hbs`
+      {{bs-button defaultText="default text" fulfilledText="text for fulfilled state" reset=reset onClick=clickAction}}
+    `);
+    assert.dom('button').hasText('default text');
+
+    await click('button');
+    assert.dom('button').hasText('text for fulfilled state');
+
+    run(() => this.set('reset', true));
+    assert.dom('button').hasText('default text');
+  });
+
+  test('isPending, isFulfilled and isRejected properties are yielded', async function (assert) {
+    this.set('clickAction', () => {
+      return new EmberPromise((resolve) => {
+        later(() => {
+          resolve();
+        }, 10);
+      });
+    });
+    await render(hbs`{{#bs-button reset=reset onClick=clickAction as |button|}}
+      {{#if button.isPending}}isPending{{/if}}
+      {{#if button.isFulfilled}}isFulfilled{{/if}}
+      {{#if button.isRejected}}isRejected{{/if}}
+    {{/bs-button}}`);
+    assert.dom('button').hasText('');
+
+    click('button');
+    await nextRunloop();
+    assert.dom('button').hasText('isPending');
+
+    await settled();
+    assert.dom('button').hasText('isFulfilled');
+
+    this.set('clickAction', () => {
+      return new EmberPromise((resolve, reject) => {
+        later(() => {
+          reject();
+        }, 10);
+      });
+    });
+    click('button');
+    await nextRunloop();
+    assert.dom('button').hasText('isPending');
+
+    await settled();
+    assert.dom('button').hasText('isRejected');
 
     run(() => this.set('reset', true));
 
-    assert.dom('button').hasText('text1');
+    assert.dom('button').hasText('');
   });
 
-  test('clicking a button sends onclick action, if promise is returned from closure action button state is changed according to promise state', async function(assert) {
-    let promise, resolvePromise;
+  test('isSettled shorthand is yielded', async function (assert) {
+    this.set('clickAction', () => {
+      return resolve();
+    });
+    await render(hbs`{{#bs-button reset=reset onClick=clickAction as |button|}}
+      {{#if button.isSettled}}isSettled{{/if}}
+    {{/bs-button}}`);
 
-    this.actions.testAction = () => {
-      promise = new EmberPromise(function(resolve) {
-        resolvePromise = resolve;
-      });
-      return promise;
-    };
+    assert.dom('button').hasText('');
 
-    await render(
-      hbs`{{bs-button onClick=(action "testAction") textState=textState defaultText="default" pendingText="pending" resolvedText="resolved" rejectedText="rejected"}}`
-    );
-
-    assert.expect(2);
     await click('button');
-    assert.dom('button').hasText('pending');
+    assert.dom('button').hasText('isSettled');
 
-    run(resolvePromise);
+    run(() => this.set('reset', true));
+    assert.dom('button').hasText('');
 
-    assert.dom('button').hasText('resolved');
-
+    this.set('clickAction', () => {
+      return reject();
+    });
+    await click('button');
+    assert.dom('button').hasText('isSettled');
   });
 
   test('clicking a button with onClick action will prevent event to bubble up', async function(assert) {
