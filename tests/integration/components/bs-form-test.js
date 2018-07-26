@@ -3,7 +3,7 @@ import { A } from '@ember/array';
 import { resolve, reject } from 'rsvp';
 import { module } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
-import { render, click, fillIn, triggerKeyEvent, triggerEvent } from '@ember/test-helpers';
+import { render, click, fillIn, triggerKeyEvent, triggerEvent, waitFor, settled } from '@ember/test-helpers';
 import {
   formFeedbackClass,
   test,
@@ -14,6 +14,8 @@ import {
   formFeedbackElement
 } from '../../helpers/bootstrap-test';
 import hbs from 'htmlbars-inline-precompile';
+import RSVP from 'rsvp';
+import { later } from '@ember/runloop';
 
 module('Integration | Component | bs-form', function(hooks) {
   setupRenderingTest(hooks);
@@ -157,6 +159,145 @@ module('Integration | Component | bs-form', function(hooks) {
       'validation errors are shown after form submission'
     );
     assert.dom(`.${formFeedbackClass()}`).hasText('There is an error');
+  });
+
+  test('Yields #isSubmitting', async function(assert) {
+    this.set('submitAction', () => {
+      return new RSVP.Promise((resolve) => {
+        later(() => {
+          resolve();
+        }, 10);
+      });
+    });
+    await this.render(hbs`{{#bs-form onSubmit=submitAction as |form|}}
+      <div class='state {{if form.isSubmitting 'is-submitting'}}'></div>
+    {{/bs-form}}`);
+
+    assert.dom('form .state').doesNotHaveClass('is-submitting');
+
+    triggerEvent('form', 'submit');
+
+    await waitFor('.is-submitting');
+    assert.dom('form .state').hasClass('is-submitting');
+
+    await settled();
+    assert.dom('form .state').doesNotHaveClass('is-submitting');
+  });
+
+  test('Yielded #isSubmitting is never true if neither validate nor onSubmit returns Promise', async function(assert) {
+    this.set('submitAction', () => {});
+    this.set('validate', () => {});
+    this.set('hasValidator', true);
+    await this.render(hbs`{{#bs-form onSubmit=submitAction validate=validate hasValidator=hasValidator as |form|}}
+      <div class='state {{if form.isSubmitting 'is-submitting'}}'></div>
+    {{/bs-form}}`);
+
+    assert.dom('form .state').doesNotHaveClass('is-submitting');
+    triggerEvent('form', 'submit');
+  });
+
+  test('Yielded #isSubmitting is true as long as Promise returned by onSubmit is pending', async function(assert) {
+    this.set('submitAction', () => {
+      return new Promise((resolve) => {
+        later(() => resolve(), 10);
+      });
+    });
+    await this.render(hbs`{{#bs-form onSubmit=submitAction as |form|}}
+      <div class='state {{if form.isSubmitting 'is-submitting'}}'></div>
+    {{/bs-form}}`);
+
+    assert.dom('form .state').doesNotHaveClass('is-submitting');
+
+    triggerEvent('form', 'submit');
+    await waitFor('.is-submitting');
+    assert.dom('form .state').hasClass('is-submitting');
+
+    await settled();
+    assert.dom('form .state').doesNotHaveClass('is-submitting');
+  });
+
+  test('Yielded #isSubmitting is true as long as Promise returned by validate is pending', async function(assert) {
+    this.set('hasValidator', true);
+    this.set('validate', () => {
+      return new Promise((resolve) => {
+        later(() => resolve(), 10);
+      });
+    });
+    await this.render(hbs`{{#bs-form hasValidator=hasValidator validate=validate as |form|}}
+      <div class='state {{if form.isSubmitting 'is-submitting'}}'></div>
+    {{/bs-form}}`);
+
+    assert.dom('form .state').doesNotHaveClass('is-submitting');
+
+    triggerEvent('form', 'submit');
+    await waitFor('.is-submitting');
+    assert.dom('form .state').hasClass('is-submitting');
+
+    await settled();
+    assert.dom('form .state').doesNotHaveClass('is-submitting');
+  });
+
+  test('Yielded #isSubmitting is true as long as Promises returned by onSubmit and validate are pending', async function(assert) {
+    this.set('validate', () => {
+      return new Promise((resolve) => {
+        later(() => {
+          resolve();
+        }, 10);
+      });
+    });
+    this.set('submitAction', () => {
+      return new Promise((resolve) => {
+        later(() => {
+          resolve();
+        }, 10);
+      });
+    });
+    await this.render(hbs`{{#bs-form onSubmit=submitAction validate=validate hasValidator=true as |form|}}
+      <div class='state {{if form.isSubmitting 'is-submitting'}}'></div>
+    {{/bs-form}}`);
+
+    assert.dom('form .state').doesNotHaveClass('is-submitting');
+
+    triggerEvent('form', 'submit');
+    await waitFor('.is-submitting');
+    assert.dom('form .state').hasClass('is-submitting');
+
+    await new Promise((resolve) => {
+      later(() => resolve(), 11)
+    });
+    assert.dom('form .state').hasClass('is-submitting');
+
+    await settled();
+    assert.dom('form .state').doesNotHaveClass('is-submitting');
+  });
+
+  test('Yielded #isSubmitting stays true until all pending submit have been fulfilled', async function(assert) {
+    this.set('submitAction', () => {
+      return new Promise((resolve) => {
+        later(() => {
+          resolve();
+        }, 10);
+      });
+    });
+    await this.render(hbs`{{#bs-form onSubmit=submitAction as |form|}}
+      <div class='state {{if form.isSubmitting 'is-submitting'}}'></div>
+    {{/bs-form}}`);
+
+    assert.dom('form .state').doesNotHaveClass('is-submitting');
+
+    triggerEvent('form', 'submit');
+    await waitFor('.is-submitting');
+    assert.dom('form .state').hasClass('is-submitting');
+
+    triggerEvent('form', 'submit');
+    // wait for 11ms to be sure first submit event is fulfilled
+    await new Promise((resolve) => {
+      later(() => resolve(), 11);
+    });
+    assert.dom('form .state').hasClass('is-submitting');
+
+    await settled();
+    assert.dom('form .state').doesNotHaveClass('is-submitting');
   });
 
   test('Adds default onChange action to form elements that updates model\'s property', async function(assert) {
